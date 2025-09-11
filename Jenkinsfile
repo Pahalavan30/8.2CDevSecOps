@@ -1,4 +1,4 @@
-﻿pipeline {
+pipeline {
   agent any
 
   // Auto-build every ~2 minutes via polling (no webhooks needed)
