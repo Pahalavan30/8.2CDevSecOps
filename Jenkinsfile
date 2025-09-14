@@ -16,3 +16,27 @@ pipeline {
     stage('Deploy to Production')         { steps { bat 'echo Promote artifact to prod' } }
   }
 }
+
+post {
+    success {
+      mail to: '6381540311-e8e543+user1@inbox.mailtrap.io',
+           subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+           body: """Build succeeded.
+
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+URL:   ${env.BUILD_URL}
+"""
+    }
+    failure {
+      mail to: '6381540311-e8e543+user1@inbox.mailtrap.io',
+           subject: "FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+           body: """Build failed.
+
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Console: ${env.BUILD_URL}console
+"""
+    }
+  }
+}
