@@ -1,7 +1,7 @@
 pipeline {
   agent any
 
-  // Poll every ~2 minutes so Jenkins auto-builds
+  // Auto-build every ~2 minutes via polling (no webhooks needed)
   triggers { pollSCM('H/2 * * * *') }
 
   stages {
@@ -17,16 +17,16 @@ pipeline {
       steps { bat 'echo Running unit + integration tests' }
       post {
         always {
-          // Force-send to this address (no filtering), attach build log
           emailext(
-            to: 'pahalavankandeepan@gmail.com',
-            recipientProviders: [],   // IMPORTANT: avoid plugin filtering
-            subject: "Run Tests finished - Build #${env.BUILD_NUMBER}",
+            to: 'tests@example.com',
+            recipientProviders: [],                 // don’t auto-add developers/users
+            subject: "Run Tests finished - Job ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
             body: """Stage: Run Tests
 Build: #${env.BUILD_NUMBER}
 Status: ${currentBuild.currentResult}
 Job: ${env.JOB_NAME}
-URL: ${env.BUILD_URL}""",
+URL: ${env.BUILD_URL}
+""",
             attachLog: true,
             compressLog: true
           )
@@ -42,16 +42,17 @@ URL: ${env.BUILD_URL}""",
       steps { bat 'echo npm audit' }
       post {
         always {
-          // Second email with different subject
+          sleep time: 3, unit: 'SECONDS'          // small gap so Mailtrap accepts the second email
           emailext(
-            to: 'pahalavankandeepan@gmail.com',
-            recipientProviders: [],   // IMPORTANT
-            subject: "Security Scan finished - Build #${env.BUILD_NUMBER}",
+            to: 'security@example.com',           // different recipient from the first mail
+            recipientProviders: [],
+            subject: "Security Scan finished - Job ${env.JOB_NAME} #${env.BUILD_NUMBER} - ${currentBuild.currentResult}",
             body: """Stage: Security Scan
 Build: #${env.BUILD_NUMBER}
 Status: ${currentBuild.currentResult}
 Job: ${env.JOB_NAME}
-URL: ${env.BUILD_URL}""",
+URL: ${env.BUILD_URL}
+""",
             attachLog: true,
             compressLog: true
           )
@@ -72,3 +73,4 @@ URL: ${env.BUILD_URL}""",
     }
   }
 }
+
