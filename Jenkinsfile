@@ -2,6 +2,12 @@ pipeline {
   agent any
   triggers { pollSCM('H/2 * * * *') }
 
+  // >>> change this if you want to use Gmail instead of Mailtrap
+  //     (but then add gmail.com to Allowed Domains in Jenkins)
+  environment {
+    MAIL_TO = 'test@mailtrap.io'
+  }
+
   stages {
     stage('Checkout') { steps { checkout scm } }
 
@@ -11,18 +17,19 @@ pipeline {
       steps { bat 'echo Running unit + integration tests' }
       post {
         always {
-          emailext(
-            to: 'pahalavankandeepan@gmail.com',   // <-- your email here
-            recipientProviders: [],               // don’t auto-add recipients
-            subject: "Run Tests – ${env.JOB_NAME} #${env.BUILD_NUMBER} – ${currentBuild.currentResult}",
-            body: """Stage: Run Tests
-Build: #${env.BUILD_NUMBER}
-Status: ${currentBuild.currentResult}
-URL: ${env.BUILD_URL}
-""",
-            attachLog: true,
-            compressLog: true
-          )
+          script {
+            def stamp = new Date().format("yyyy-MM-dd HH:mm:ss")
+            emailext(
+              to: env.MAIL_TO,
+              subject: "Run Tests finished - ${env.JOB_NAME} #${env.BUILD_NUMBER} @ ${stamp}",
+              body: """Run Tests finished for ${env.JOB_NAME} #${env.BUILD_NUMBER}
+Result: ${currentBuild.currentResult}
+Log: ${env.BUILD_URL}console""",
+              attachLog: true,
+              compressLog: true,
+              mimeType: 'text/plain'
+            )
+          }
         }
       }
     }
@@ -33,27 +40,29 @@ URL: ${env.BUILD_URL}
       steps { bat 'echo npm audit' }
       post {
         always {
-          sleep time: 3, unit: 'SECONDS'         // small gap so second mail isn’t deduped
-          emailext(
-            to: 'pahalavankandeepan@gmail.com',  // <-- same email is fine
-            recipientProviders: [],
-            subject: "Security Scan – ${env.JOB_NAME} #${env.BUILD_NUMBER} – ${currentBuild.currentResult}",
-            body: """Stage: Security Scan
-Build: #${env.BUILD_NUMBER}
-Status: ${currentBuild.currentResult}
-URL: ${env.BUILD_URL}
-""",
-            attachLog: true,
-            compressLog: true
-          )
+          script {
+            sleep(time: 5, unit: 'SECONDS')   // small gap to avoid any SMTP de-dupe
+            def stamp = new Date().format("yyyy-MM-dd HH:mm:ss")
+            emailext(
+              to: env.MAIL_TO,
+              subject: "Security Scan finished - ${env.JOB_NAME} #${env.BUILD_NUMBER} @ ${stamp}",
+              body: """Security Scan finished for ${env.JOB_NAME} #${env.BUILD_NUMBER}
+Result: ${currentBuild.currentResult}
+Log: ${env.BUILD_URL}console""",
+              attachLog: true,
+              compressLog: true,
+              mimeType: 'text/plain'
+            )
+          }
         }
       }
     }
 
-    stage('Deploy to Staging') { steps { bat 'echo Deploy artifact to staging' } }
+    stage('Deploy to Staging')            { steps { bat 'echo Deploy artifact to staging' } }
     stage('Integration Tests on Staging') { steps { bat 'echo E2E/smoke on staging' } }
-    stage('Deploy to Production') { steps { bat 'echo Promote artifact to prod' } }
+    stage('Deploy to Production')         { steps { bat 'echo Promote artifact to prod' } }
   }
 }
+
 
 
